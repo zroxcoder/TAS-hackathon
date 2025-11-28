@@ -98,10 +98,45 @@ const localQuotes = [
 ];
 
 /* ------------------------------
-   Quotes (Local Only)
+   Local Offline Education News
+--------------------------------*/
+const localNews = [
+    { title: "New Study Shows AI Helping Students Learn Faster", source: "EduTech Daily" },
+    { title: "Government Announces New Education Reforms for 2025", source: "Global Education Times" },
+    { title: "Online Learning Platforms Reach Record Growth", source: "Digital Learning Hub" },
+    { title: "Experts Say Soft Skills Are Becoming More Important", source: "Academic Journal" },
+    { title: "Top Universities Introduce New Tech-Driven Courses", source: "Campus World" },
+    { title: "Students Prefer Hybrid Learning Models, Survey Finds", source: "Edu Research Lab" },
+    { title: "AI Tutors Becoming Common in Classrooms", source: "Education Today" },
+    { title: "Internship Programs Expected to Increase in 2025", source: "Career Builders News" },
+    { title: "New Math Techniques Improve Problem-Solving Skills", source: "Science Daily" },
+    { title: "Schools Encouraged to Add Coding in Curriculum", source: "STEM World" },
+    { title: "Digital Notes Replace Paper in Many Institutes", source: "Smart Campus News" },
+    { title: "Scholarship Programs Expanding Globally", source: "Edu Global Network" },
+    { title: "Study Reveals Benefits of Short Study Sessions", source: "Research Weekly" },
+    { title: "More Students Choosing Remote Project Collaboration", source: "Tech Students Hub" },
+    { title: "Universities Modernize Libraries With AI Search", source: "Library Future Times" },
+    { title: "Education Apps See High Engagement Among Teens", source: "App Insights" },
+    { title: "Hybrid Exams Could Become the New Standard", source: "Exam Watch" },
+    { title: "More Schools Adopt Mental Health Support Programs", source: "Student Life News" },
+    { title: "2025 Expected to Be a Big Year for EdTech Growth", source: "FutureEd" },
+    { title: "New Coding Challenges Encourage Student Creativity", source: "Coder Campus" },
+    { title: "Robotics Competitions Attract Record Participation", source: "STEM Times" },
+    { title: "Study Shows Students Learn Faster With Gamification", source: "Learning Science" },
+    { title: "More Students Choose Self-Paced Online Courses", source: "Open Learning News" },
+    { title: "AI Can Help Teachers Save Time On Grading", source: "Teacher Weekly" },
+    { title: "Science Fairs Introduce Virtual Experiments", source: "SciTech News" },
+    { title: "Students Turn to Digital Planners for Productivity", source: "Productivity Hub" },
+    { title: "Group Study Still Proven to Boost Retention Rates", source: "Academic Review" },
+    { title: "Digital Libraries Becoming More Accessible", source: "Global Academy News" },
+    { title: "Experts Encourage Project-Based Learning Models", source: "Education Insights" },
+    { title: "Tech Institutes Introduce AI-Powered Labs", source: "AI Campus News" }
+];
+
+/* ------------------------------
+   Quotes Loader
 --------------------------------*/
 function loadQuote() {
-    // pick random every refresh
     const random = Math.floor(Math.random() * localQuotes.length);
     const q = localQuotes[random];
 
@@ -110,40 +145,24 @@ function loadQuote() {
 }
 
 /* ------------------------------
-   Education News API (Frontend Only) — FASTER
+   Load Offline News
 --------------------------------*/
-async function loadNews() {
-    const container = document.getElementById("newsContainer")
+function loadNews() {
+    const container = document.getElementById("newscontainer");
+    container.innerHTML = "";
 
-    container.innerHTML = "Loading news...";
+    const shuffled = [...localNews].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 5);
 
-    try {
-        const res = await fetch(
-            `https://gnews.io/api/v4/search?q=education&lang=en&max=5&sortby=publishedAt&apikey=a997497970b25a906b96134685c58a21&nocache=${Date.now()}`
-        );
-
-        const data = await res.json();
-        container.innerHTML = "";
-
-        if (!data.articles || data.articles.length === 0) {
-            container.innerHTML = "No news found.";
-            return;
-        }
-
-        data.articles.forEach(article => {
-            const div = document.createElement("div");
-            div.className = "p-2 rounded mb-2 bg-light border";
-
-            div.innerHTML = `
-                <strong>${article.title}</strong><br>
-                <small>${article.source.name}</small>
-            `;
-
-            container.appendChild(div);
-        });
-    } catch (err) {
-        container.innerHTML = "Failed to load news.";
-    }
+    selected.forEach(article => {
+        const div = document.createElement("div");
+        div.className = "p-2 rounded mb-2 bg-light border";
+        div.innerHTML = `
+            <strong>${article.title}</strong><br>
+            <small>${article.source}</small>
+        `;
+        container.appendChild(div);
+    });
 }
 
 /* ------------------------------
