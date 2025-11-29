@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>Notes | Edumate</title>
+
+<link rel="icon" href="../assets/E.ico" type="image/x-icon">
+
 <style>
 :root {
     --primary-orange: #ffb56b;
@@ -10,26 +13,26 @@
     --dark-text: #333;
     --light-bg: #ffffff;
 }
-/* SIDEBAR */
+
 #sidebar { width:260px;height:100vh;position:fixed;left:0;top:0;background:var(--soft-orange);padding-top:20px;overflow-y:auto;box-shadow:5px 0 12px rgba(0,0,0,0.1); }
 #sidebar h3 { font-size:30px;font-weight:900;letter-spacing:1px;text-transform:uppercase;text-shadow:2px 2px 4px rgba(0,0,0,0.2);margin-left:20px;text-align:left;animation:fadeIn 1s ease-in-out; }
 #sidebar .nav-link { display:block;color:var(--dark-text);font-weight:600;margin:6px 10px;padding:10px 15px;border-radius:10px;transition:0.25s ease-in-out;text-decoration:none; }
 #sidebar .nav-link:hover,#sidebar .nav-link.active { background:var(--primary-orange);color:#000;transform:translateX(5px); }
-/* MAIN CONTENT */
+
 .content { margin-left:260px;padding:30px;min-height:100vh;background:var(--light-bg);}
 .section-title { font-size:26px;font-weight:800;margin-bottom:25px; }
-/* NOTES GRID */
+
 .notes-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;}
-/* NOTE CARD */
+
 .note-card { background:var(--soft-orange);border-radius:12px;padding:15px;box-shadow:0px 4px 10px rgba(0,0,0,0.15);position:relative;min-height:140px;animation:fadeIn 0.6s;}
 .note-card h3 { margin:0; }
 .note-card small { opacity:0.6; }
-/* PIN ICON */
+
 .pin { position:absolute;right:12px;top:12px;font-size:20px;cursor:pointer; }
 .pin.active { color:gold; }
-/* Floating Add Button */
+
 .add-btn { position:fixed;right:40px;bottom:40px;background:var(--primary-orange);color:#fff;font-size:30px;width:65px;height:65px;border-radius:50%;border:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);cursor:pointer;}
-/* MODAL */
+
 .modal { position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.45);display:none;justify-content:center;align-items:center;}
 .modal-content { background:var(--soft-orange);padding:25px;width:400px;border-radius:12px;box-shadow:0 4px 10px black;}
 .modal-content input,.modal-content textarea,.modal-content select { width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #aaa;}
@@ -76,7 +79,7 @@
 let db;
 let editID = null;
 
-// ---------------------- IndexedDB Helper ----------------------
+
 function openDB() {
     return new Promise((resolve,reject)=>{
         const req = indexedDB.open("MateDB",3);
@@ -97,7 +100,7 @@ function add(store,obj){return new Promise(resolve=>{ const tx=db.transaction(st
 function put(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).put(obj); req.onsuccess=()=>resolve(); });}
 function del(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).delete(key); req.onsuccess=()=>resolve(); });}
 
-// ---------------------- Modal ----------------------
+
 function openModal(){ document.getElementById("noteModal").style.display="flex"; }
 function closeModal(){ 
     document.getElementById("noteModal").style.display="none";
@@ -107,7 +110,7 @@ function closeModal(){
     modalTitle.innerText = "Add Note / Bookmark";
 }
 
-// ---------------------- Save / Edit Note ----------------------
+
 async function saveNote(){
     let obj = {
         type: type.value,
@@ -122,7 +125,7 @@ async function saveNote(){
     closeModal(); loadNotes();
 }
 
-// ---------------------- Load Notes ----------------------
+
 async function loadNotes(){
     const container = notesList;
     container.innerHTML = "";
@@ -142,7 +145,7 @@ async function loadNotes(){
     });
 }
 
-// ---------------------- Pin Toggle ----------------------
+
 async function togglePin(id,state){
     let n = await get("notes",id);
     n.pinned = !state;
@@ -150,13 +153,13 @@ async function togglePin(id,state){
     loadNotes();
 }
 
-// ---------------------- Delete Note ----------------------
+
 async function deleteNote(id){
     await del("notes",id);
     loadNotes();
 }
 
-// ---------------------- Edit Note ----------------------
+
 async function editNote(id){
     let n = await get("notes",id);
     editID = id;
@@ -165,7 +168,7 @@ async function editNote(id){
     openModal();
 }
 
-// ---------------------- Init ----------------------
+
 openDB().then(loadNotes);
 </script>
 

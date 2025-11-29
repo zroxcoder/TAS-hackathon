@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>Profile | Edumate</title>
+
+<link rel="icon" href="../assets/E.ico" type="image/x-icon">
+
 <style>
 :root {
     --primary-orange: #ffb56b;
@@ -11,7 +14,7 @@
     --light-bg: #fff;
 }
 
-/* SIDEBAR */
+
 #sidebar {
     width: 260px;
     height: 100vh;
@@ -26,11 +29,11 @@
 #sidebar .nav-link { display:block;color:var(--dark-text);margin:6px 10px;padding:10px 15px;border-radius:10px;text-decoration:none;font-weight:600;transition:0.25s; }
 #sidebar .nav-link:hover, #sidebar .nav-link.active { background:var(--primary-orange); color:#000; transform:translateX(5px); }
 
-/* CONTENT */
+
 .content { margin-left:260px; padding:30px; min-height:100vh; background: var(--light-bg); }
 .section-title { font-size:26px; font-weight:800; margin-bottom:25px; }
 
-/* PROFILE CARD */
+
 .profile-card {
     background: var(--soft-orange);
     padding: 20px;
@@ -48,18 +51,18 @@
 .profile-details label { font-weight:600; margin-top:5px; }
 .profile-details input { padding:6px 8px; border-radius:6px; border:1px solid #ccc; width:100%; }
 
-/* CERTIFICATES */
+
 .certificates-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:15px; margin-bottom:25px; }
 .certificate-card { background:var(--soft-orange); padding:10px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.15); text-align:center; word-wrap:break-word; }
 
-/* RECENT ACTIVITY */
+
 .activity-grid { display:flex; flex-direction:column; gap:8px; max-height:250px; overflow-y:auto; margin-bottom:25px; }
 .activity-card { background:var(--soft-orange); padding:8px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); font-size:14px; }
 
-/* PROGRESS CHART */
+
 #progressChart { max-width:600px; margin-bottom:30px; height:300px; display:block; } /* ensure visible area for Chart.js */
 
-/* DATA CONTROLS */
+
 .data-controls { display:flex; gap:15px; margin-top:20px; }
 .data-controls button { padding:10px 20px; border:none; border-radius:8px; background:var(--primary-orange); color:#fff; cursor:pointer; }
 </style>
@@ -80,7 +83,7 @@
 <div class="content">
     <h2 class="section-title">Profile & Settings</h2>
 
-    <!-- PROFILE CARD -->
+
     <div class="profile-card">
         <img id="profilePic" src="default-profile.png" alt="Profile Picture">
         <div class="profile-details">
@@ -96,22 +99,22 @@
         </div>
     </div>
 
-    <!-- PROGRESS CHART -->
+
     <div id="progressChartWrap" style="display:flex;justify-content:center;">
         <canvas id="progressChart" style="width:100%;max-width:600px;height:300px;"></canvas>
     </div>
     <div id="progressError" style="color:#b00020;margin-top:6px;text-align:center;display:none;"></div>
 
-    <!-- CERTIFICATES -->
+
     <h3>Certificates</h3>
     <input type="file" id="uploadCert" accept="image/*,.pdf" multiple onchange="uploadCertificates(event)">
     <div class="certificates-grid" id="certificatesGrid"></div>
 
-    <!-- RECENT ACTIVITY -->
+
     <h3>Recent Activity</h3>
     <div class="activity-grid" id="activityGrid"></div>
 
-    <!-- DATA IMPORT / EXPORT / CLEAR -->
+
     <div class="data-controls">
         <button onclick="exportData()">Export Data</button>
         <button onclick="importData()">Import Data</button>
@@ -122,9 +125,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
 
 <script>
-/* ---------------------- DATABASE ---------------------- */
+
 let db;
-let progressChart = null; // keep reference so we can destroy and re-create cleanly
+let progressChart = null; 
 function openDB() {
     return new Promise((resolve,reject)=>{
         const req=indexedDB.open("MateDB",3);
@@ -144,7 +147,7 @@ function add(store,obj){return new Promise(resolve=>{ const tx=db.transaction(st
 function put(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).put(obj); req.onsuccess=()=>resolve(); });}
 function del(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).delete(key); req.onsuccess=()=>resolve(); });}
 
-/* ---------------------- PROFILE FUNCTIONS ---------------------- */
+
 async function loadProfile() {
     const profile = await get("profile",1) || {};
     document.getElementById("username").innerText = profile.username || "Your Name";
@@ -153,7 +156,7 @@ async function loadProfile() {
 }
 async function saveProfile() {
     const profile = {
-        id: 1, // important for consistent key
+        id: 1, 
         username: document.getElementById("editUsername").value || document.getElementById("username").innerText,
         status: document.getElementById("editStatus").value || document.getElementById("status").innerText,
         pic: document.getElementById("profilePic").src
@@ -168,7 +171,7 @@ function uploadProfilePic(e){
     reader.readAsDataURL(e.target.files[0]);
 }
 
-/* ---------------------- CERTIFICATES ---------------------- */
+
 async function uploadCertificates(e){
     const files = Array.from(e.target.files);
     for(const file of files){
@@ -197,7 +200,7 @@ async function loadCertificates(){
     });
 }
 
-/* ---------------------- ACTIVITY ---------------------- */
+
 async function logActivity(action){
     await add("activity",{action, time:new Date().toLocaleString()});
 }
@@ -214,7 +217,7 @@ async function loadActivity(){
     });
 }
 
-/* ---------------------- PROGRESS CHART ---------------------- */
+
 async function loadProgress(){
     try {
         const projects = await getAll("projects");
@@ -227,7 +230,7 @@ async function loadProgress(){
         ];
         const total = counts.reduce((s,v)=>s+v,0);
 
-        // destroy previous chart if exists
+
         if(progressChart) { progressChart.destroy(); progressChart = null; }
 
         let chartData, chartType = "pie", chartOptions = {
@@ -239,7 +242,7 @@ async function loadProgress(){
         };
 
         if(total === 0){
-            // fallback when no completed items — show a neutral single slice labeled "No data"
+
             chartData = {
                 labels: ["No completed items"],
                 datasets: [{ data: [1], backgroundColor: ["#e0e0e0"] }]
@@ -248,12 +251,12 @@ async function loadProgress(){
         } else {
             chartData = {
                 labels: ["Projects Completed","Tasks (Planner) Completed","Courses Completed"],
-                // distinct colors: projects (green), planner/tasks (blue), courses (orange)
+
                 datasets: [{ data: counts, backgroundColor:["#4CAF50","#2196F3","#FF9800"] }]
             };
         }
 
-        // clear any previous error
+
         const errEl = document.getElementById('progressError');
         errEl.style.display = 'none';
         errEl.innerText = '';
@@ -272,8 +275,7 @@ async function loadProgress(){
     }
 }
 
-/* ---------------------- STORAGE SYNC ---------------------- */
-/* refresh chart when other pages/tabs broadcast updates via localStorage */
+
 window.addEventListener('storage', (e)=>{
     if(!e.key) return;
     try {
@@ -286,7 +288,7 @@ window.addEventListener('storage', (e)=>{
     } catch(err){ console.error(err); }
 });
 
-/* ---------------------- IMPORT / EXPORT / CLEAR ---------------------- */
+
 async function exportData(){
     const stores=["notes","tasks","projects","courses","profile","activity","certificates"];
     const allData={};
@@ -323,7 +325,7 @@ async function clearAllData(){
     loadAll();
 }
 
-/* ---------------------- LOAD ALL ---------------------- */
+
 async function loadAll(){
     await loadProfile();
     await loadCertificates();
@@ -331,7 +333,7 @@ async function loadAll(){
     await loadProgress();
 }
 
-/* ---------------------- INIT ---------------------- */
+
 openDB().then(loadAll);
 </script>
 

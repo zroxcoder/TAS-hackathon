@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>Projects | Edumate</title>
+
+<link rel="icon" href="../assets/E.ico" type="image/x-icon">
+
 <style>
 :root {
     --primary-orange: #ffb56b;
@@ -10,13 +13,13 @@
     --dark-text: #333;
     --light-bg: #ffffff;
 }
-/* SIDEBAR */
+
 #sidebar { width:260px;height:100vh;position:fixed;left:0;top:0;background:var(--soft-orange);padding-top:20px;overflow-y:auto;box-shadow:5px 0 12px rgba(0,0,0,0.1);}
 #sidebar h3 { font-size:30px;font-weight:900;letter-spacing:1px;text-transform:uppercase;text-shadow:2px 2px 4px rgba(0,0,0,0.2);margin-left:20px;text-align:left;animation:fadeIn 1s ease-in-out;}
 #sidebar .nav-link { display:block;color:var(--dark-text);font-weight:600;margin:6px 10px;padding:10px 15px;border-radius:10px;transition:0.25s ease-in-out;text-decoration:none;}
 #sidebar .nav-link:hover,#sidebar .nav-link.active { background:var(--primary-orange); color:#000; transform:translateX(5px);}
 
-/* MAIN CONTENT */
+
 .content { margin-left:260px;padding:30px;min-height:100vh;background:var(--light-bg);}
 .section-title { font-size:26px;font-weight:800;margin-bottom:25px; }
 .top-controls { display:flex;gap:15px;margin-bottom:20px;}
@@ -92,7 +95,7 @@
 let db;
 let editID=null;
 
-// ---------------------- IndexedDB Helper ----------------------
+
 function openDB() {
     return new Promise((resolve,reject)=>{
         const req=indexedDB.open("MateDB",3);
@@ -112,7 +115,7 @@ function add(store,obj){return new Promise(resolve=>{ const tx=db.transaction(st
 function put(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).put(obj); req.onsuccess=()=>resolve(); });}
 function del(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).delete(key); req.onsuccess=()=>resolve(); });}
 
-// ---------------------- Modal ----------------------
+
 function openModal(isEdit=false){
     document.getElementById("projectModal").style.display="flex";
     document.getElementById("modalTitle").innerText = isEdit ? "Edit Project" : "Add New Project";
@@ -123,7 +126,7 @@ function closeModal(){
     projectTitle.value=""; projectDesc.value=""; projectTags.value=""; projectStart.value=""; projectDeadline.value=""; projectPriority.value="Low"; projectSubtasks.value="";
 }
 
-// ---------------------- Save/Edit Project ----------------------
+
 async function saveProject(){
     // preserve done state when editing
     let doneState = false;
@@ -149,7 +152,7 @@ async function saveProject(){
      closeModal(); loadProjects();
  }
  
- // ---------------------- Load Projects ----------------------
+
  async function loadProjects(){
      const container=document.getElementById("projectList");
      container.innerHTML="";
@@ -168,7 +171,7 @@ async function saveProject(){
             <label style="display:inline-block;margin-left:8px;">
                 <input type="checkbox" onchange="toggleDone(${p.id}, this.checked)" ${p.done ? "checked" : ""}> Done
             </label>
-            <span class="fav ${p.fav?"active":""}" onclick="toggleFav(${p.id},${p.fav})">❤️</span>
+            <span class="fav ${p.fav?"active":""}" onclick="toggleFav(${p.id},${p.fav})">🧡</span>
              <h3>${p.title}</h3>
              <p>${p.description}</p>
              <p><b>Tags:</b> ${p.tags}</p>
@@ -182,7 +185,7 @@ async function saveProject(){
      });
  }
  
- // ---------------------- Edit Project ----------------------
+ 
  async function editProject(id){
      let p=await get("projects",id);
      editID=id;
@@ -192,23 +195,23 @@ async function saveProject(){
      openModal(true);
  }
  
- // ---------------------- Toggle Done ----------------------
+ 
  async function toggleDone(id, state){
      let p = await get("projects", id);
      if(!p) return;
      p.done = !!state;
      await put("projects", p);
-    // notify other pages/tabs to refresh their views (profile chart)
+ 
     try{ localStorage.setItem('edumate-update', JSON.stringify({time:Date.now(), store:'projects'})); }catch(e){}
     loadProjects();
  }
  
- // ---------------------- Delete / Pin / Fav ----------------------
+ 
  async function deleteProject(id){ await del("projects",id); loadProjects(); }
  async function togglePin(id,state){ let p=await get("projects",id); p.pinned=!state; await put("projects",p); loadProjects(); }
  async function toggleFav(id,state){ let p=await get("projects",id); p.fav=!state; await put("projects",p); loadProjects(); }
 
-// ---------------------- Init ----------------------
+
 openDB().then(loadProjects);
 </script>
 

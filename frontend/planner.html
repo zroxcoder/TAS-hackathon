@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>Planner | Edumate</title>
+
+<link rel="icon" href="../assets/E.ico" type="image/x-icon">
+
 <style>
 :root {
     --primary-orange: #ffb56b;
@@ -10,12 +13,12 @@
     --dark-text: #333;
     --light-bg: #ffffff;
 }
-/* SIDEBAR */
+
 #sidebar { width:260px;height:100vh;position:fixed;left:0;top:0;background:var(--soft-orange);padding-top:20px;overflow-y:auto;box-shadow:5px 0 12px rgba(0,0,0,0.1); }
 #sidebar h3 { font-size:30px;font-weight:900;letter-spacing:1px;text-transform:uppercase;text-shadow:2px 2px 4px rgba(0,0,0,0.2);margin-left:20px;text-align:left;animation:fadeIn 1s ease-in-out; }
 #sidebar .nav-link { display:block;color:var(--dark-text);font-weight:600;margin:6px 10px;padding:10px 15px;border-radius:10px;transition:0.25s ease-in-out;text-decoration:none; }
 #sidebar .nav-link:hover,#sidebar .nav-link.active { background:var(--primary-orange);color:#000;transform:translateX(5px); }
-/* MAIN CONTENT */
+
 .content { margin-left:260px;padding:30px;min-height:100vh;background:var(--light-bg);}
 .section-title { font-size:26px;font-weight:800;margin-bottom:25px; }
 .top-controls { display:flex;gap:15px;margin-bottom:20px;}
@@ -87,7 +90,7 @@
 let db;
 let editID=null;
 
-// ---------------------- IndexedDB Helper ----------------------
+
 function openDB() {
     return new Promise((resolve,reject)=>{
         const req=indexedDB.open("MateDB",3);
@@ -107,7 +110,7 @@ function add(store,obj){return new Promise(resolve=>{ const tx=db.transaction(st
 function put(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).put(obj); req.onsuccess=()=>resolve(); });}
 function del(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).delete(key); req.onsuccess=()=>resolve(); });}
 
-// ---------------------- Modal ----------------------
+
 function openModal(isEdit=false){ document.getElementById("taskModal").style.display="flex"; }
 function closeModal(){ 
     document.getElementById("taskModal").style.display="none";
@@ -115,9 +118,9 @@ function closeModal(){
     document.getElementById("modalTitle").innerText="Add New Task";
 }
 
-// ---------------------- Save/Edit Task ----------------------
+
 async function saveTask(){
-    // preserve done state when editing
+
     let doneState = false;
     if(editID){
         const existing = await get("tasks", editID);
@@ -137,7 +140,7 @@ async function saveTask(){
     closeModal(); loadTasks();
 }
  
-// ---------------------- Load Tasks ----------------------
+
 async function loadTasks(){
     const container=document.getElementById("taskList");
     container.innerHTML="";
@@ -167,7 +170,7 @@ async function loadTasks(){
     });
 }
  
-// ---------------------- Edit Task ----------------------
+
 async function editTask(id){
     let t=await get("tasks",id);
     editID=id;
@@ -176,21 +179,21 @@ async function editTask(id){
     openModal(true);
 }
  
-// ---------------------- Toggle Done ----------------------
+
 async function toggleDone(id, state){
     let t = await get("tasks", id);
     if(!t) return;
     t.done = !!state;
     await put("tasks", t);
-    // notify other pages/tabs to refresh their views (profile chart)
+
     try{ localStorage.setItem('edumate-update', JSON.stringify({time:Date.now(), store:'tasks'})); }catch(e){}
     loadTasks();
 }
 
-// ---------------------- Delete Task ----------------------
+
 async function deleteTask(id){ await del("tasks",id); loadTasks(); }
 
-// ---------------------- Pin Toggle ----------------------
+
 async function togglePin(id,state){
     let t=await get("tasks",id);
     t.pinned=!state;
@@ -198,7 +201,7 @@ async function togglePin(id,state){
     loadTasks();
 }
 
-// ---------------------- Init ----------------------
+
 openDB().then(loadTasks);
 </script>
 
