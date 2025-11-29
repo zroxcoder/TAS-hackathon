@@ -1,6 +1,3 @@
-/* ------------------------------
-   IndexedDB – Fetch Deadlines
---------------------------------*/
 function openDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open("EduMateDB", 1);
@@ -30,9 +27,7 @@ function getDeadlines(storeName) {
     });
 }
 
-/* ------------------------------
-   Load Notifications
---------------------------------*/
+
 async function loadNotifications() {
     const notifList = document.getElementById("notifications");
     notifList.innerHTML = "<li class='list-group-item'>Loading...</li>";
@@ -61,9 +56,7 @@ async function loadNotifications() {
     });
 }
 
-/* ------------------------------
-   Local Quotes (30 Total)
---------------------------------*/
+
 const localQuotes = [
     { q: "Education is the most powerful weapon you can use to change the world.", a: "Nelson Mandela" },
     { q: "The future belongs to those who prepare for it today.", a: "Malcolm X" },
@@ -97,9 +90,6 @@ const localQuotes = [
     { q: "If you get tired, learn to rest—not to quit.", a: "Unknown" }
 ];
 
-/* ------------------------------
-   Local Offline Education News
---------------------------------*/
 const localNews = [
     { title: "New Study Shows AI Helping Students Learn Faster", source: "EduTech Daily" },
     { title: "Government Announces New Education Reforms for 2025", source: "Global Education Times" },
@@ -133,9 +123,6 @@ const localNews = [
     { title: "Tech Institutes Introduce AI-Powered Labs", source: "AI Campus News" }
 ];
 
-/* ------------------------------
-   Quotes Loader
---------------------------------*/
 function loadQuote() {
     const random = Math.floor(Math.random() * localQuotes.length);
     const q = localQuotes[random];
@@ -144,9 +131,6 @@ function loadQuote() {
     document.getElementById("author").textContent = q.a;
 }
 
-/* ------------------------------
-   Load Offline News
---------------------------------*/
 function loadNews() {
     const container = document.getElementById("newscontainer");
     container.innerHTML = "";
@@ -165,9 +149,6 @@ function loadNews() {
     });
 }
 
-/* ------------------------------
-   Dashboard Greeting
---------------------------------*/
 function setGreeting() {
     const h2 = document.getElementById("Greeting");
     const hour = new Date().getHours();
@@ -181,16 +162,10 @@ function setGreeting() {
     h2.textContent = `${msg}, User!`;
 }
 
-/* ------------------------------
-   Dashboard Cards Removed
---------------------------------*/
 function loadDashboardCards() {
     document.getElementById("dashboardcards").innerHTML = "";
 }
 
-/* ------------------------------
-   Initialize Dashboard
---------------------------------*/
 window.onload = () => {
     setGreeting();
     loadDashboardCards();

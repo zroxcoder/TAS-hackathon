@@ -1,0 +1,49 @@
+/* Same theme variables used in dashboard */
+:root {
+    --primary-orange: #ffb56b;
+    --soft-orange: #ffe0c2;
+    --dark-text: #333;
+    --light-bg: #ffffff;
+}
+
+/* Notes grid */
+#notesContainer .note-card {
+    background: var(--soft-orange);
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    margin-bottom: 20px;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+#notesContainer .note-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.note-top-icons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.color-options {
+    display: flex;
+    gap: 10px;
+}
+
+.color-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #3333;
+    display: inline-block;
+}
+
+.color-dot.selected {
+    border: 3px solid black;
+}
