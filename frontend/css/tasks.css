@@ -5,7 +5,6 @@
     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-
 .tag-box {
     display: flex;
     flex-wrap: wrap;
@@ -25,7 +24,6 @@
 .tag.selected {
     outline: 2px solid #000;
 }
-
 
 .task-item {
     background: var(--soft-orange);

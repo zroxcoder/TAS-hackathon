@@ -1,4 +1,4 @@
-/* Same theme variables used in dashboard */
+/* Theme Variables */
 :root {
     --primary-orange: #ffb56b;
     --soft-orange: #ffe0c2;
@@ -6,14 +6,14 @@
     --light-bg: #ffffff;
 }
 
-/* Notes grid */
+/* NOTE CARDS */
 #notesContainer .note-card {
     background: var(--soft-orange);
     padding: 18px;
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     margin-bottom: 20px;
-    transition: 0.2s;
+    transition: 0.2s ease;
     cursor: pointer;
 }
 
@@ -22,6 +22,7 @@
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
 }
 
+/* TOP ICONS IN NOTE CARD */
 .note-top-icons {
     display: flex;
     justify-content: flex-end;
@@ -30,6 +31,7 @@
     cursor: pointer;
 }
 
+/* COLOR SELECTOR */
 .color-options {
     display: flex;
     gap: 10px;
@@ -40,7 +42,10 @@
     height: 24px;
     border-radius: 50%;
     cursor: pointer;
-    border: 2px solid #3333;
+
+    /* ❗ FIXED: "#3333" is invalid. Correct is "rgba(51,51,51,0.2)" */
+    border: 2px solid rgba(51, 51, 51, 0.2);
+
     display: inline-block;
 }
 
