@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Notes | Edumate</title>
+<style>
+:root {
+    --primary-orange: #ffb56b;
+    --soft-orange: #ffe0c2;
+    --dark-text: #333;
+    --light-bg: #ffffff;
+}
+/* SIDEBAR */
+#sidebar { width:260px;height:100vh;position:fixed;left:0;top:0;background:var(--soft-orange);padding-top:20px;overflow-y:auto;box-shadow:5px 0 12px rgba(0,0,0,0.1); }
+#sidebar h3 { font-size:30px;font-weight:900;letter-spacing:1px;text-transform:uppercase;text-shadow:2px 2px 4px rgba(0,0,0,0.2);margin-left:20px;text-align:left;animation:fadeIn 1s ease-in-out; }
+#sidebar .nav-link { display:block;color:var(--dark-text);font-weight:600;margin:6px 10px;padding:10px 15px;border-radius:10px;transition:0.25s ease-in-out;text-decoration:none; }
+#sidebar .nav-link:hover,#sidebar .nav-link.active { background:var(--primary-orange);color:#000;transform:translateX(5px); }
+/* MAIN CONTENT */
+.content { margin-left:260px;padding:30px;min-height:100vh;background:var(--light-bg);}
+.section-title { font-size:26px;font-weight:800;margin-bottom:25px; }
+/* NOTES GRID */
+.notes-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;}
+/* NOTE CARD */
+.note-card { background:var(--soft-orange);border-radius:12px;padding:15px;box-shadow:0px 4px 10px rgba(0,0,0,0.15);position:relative;min-height:140px;animation:fadeIn 0.6s;}
+.note-card h3 { margin:0; }
+.note-card small { opacity:0.6; }
+/* PIN ICON */
+.pin { position:absolute;right:12px;top:12px;font-size:20px;cursor:pointer; }
+.pin.active { color:gold; }
+/* Floating Add Button */
+.add-btn { position:fixed;right:40px;bottom:40px;background:var(--primary-orange);color:#fff;font-size:30px;width:65px;height:65px;border-radius:50%;border:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);cursor:pointer;}
+/* MODAL */
+.modal { position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.45);display:none;justify-content:center;align-items:center;}
+.modal-content { background:var(--soft-orange);padding:25px;width:400px;border-radius:12px;box-shadow:0 4px 10px black;}
+.modal-content input,.modal-content textarea,.modal-content select { width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #aaa;}
+.modal-content button { background:var(--primary-orange);border:none;padding:10px 20px;border-radius:8px;cursor:pointer;margin-right:8px;}
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h3>EDUMATE</h3>
+    <a class="nav-link" href="dashboard.html">📊 Dashboard</a>
+    <a class="nav-link active" href="notes.html">📝 Notes</a>
+    <a class="nav-link" href="planner.html">📅 Planner</a>
+    <a class="nav-link" href="projects.html">📁 Projects</a>
+    <a class="nav-link" href="courses.html">🎓 Courses</a>
+    <a class="nav-link" href="aichatbot.html">🤖 AI Chat</a>
+    <a class="nav-link" href="profile.html">⚙️ Profile</a>
+</div>
+
+<div class="content">
+    <h2 class="section-title">Your Notes & Bookmarks</h2>
+    <div class="notes-grid" id="notesList"></div>
+</div>
+
+<button class="add-btn" onclick="openModal()">+</button>
+
+<div id="noteModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modalTitle">Add Note / Bookmark</h3>
+        <select id="type">
+            <option value="note">📝 Note</option>
+            <option value="bookmark">🔗 Bookmark</option>
+        </select>
+        <input id="title" type="text" placeholder="Title">
+        <textarea id="content" placeholder="Content / URL if bookmark"></textarea>
+        <input id="tags" type="text" placeholder="Tags (comma separated)">
+        <button onclick="saveNote()">Save</button>
+        <button onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<script>
+let db;
+let editID = null;
+
+// ---------------------- IndexedDB Helper ----------------------
+function openDB() {
+    return new Promise((resolve,reject)=>{
+        const req = indexedDB.open("MateDB",3);
+        req.onupgradeneeded = e => {
+            db = e.target.result;
+            ["notes","tasks","projects","courses","profile","activity","certificates","chats","searches"].forEach(store=>{
+                if(!db.objectStoreNames.contains(store)) db.createObjectStore(store,{keyPath:"id",autoIncrement:true});
+            });
+        };
+        req.onsuccess = e => { db = e.target.result; resolve(db); };
+        req.onerror = e => reject(e);
+    });
+}
+
+function get(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readonly"); const req=tx.objectStore(store).get(key); req.onsuccess=()=>resolve(req.result); req.onerror=()=>resolve(null);});}
+function getAll(store){return new Promise(resolve=>{ const tx=db.transaction(store,"readonly"); const req=tx.objectStore(store).getAll(); req.onsuccess=()=>resolve(req.result); req.onerror=()=>resolve([]);});}
+function add(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).add(obj); req.onsuccess=()=>resolve(); });}
+function put(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).put(obj); req.onsuccess=()=>resolve(); });}
+function del(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).delete(key); req.onsuccess=()=>resolve(); });}
+
+// ---------------------- Modal ----------------------
+function openModal(){ document.getElementById("noteModal").style.display="flex"; }
+function closeModal(){ 
+    document.getElementById("noteModal").style.display="none";
+    editID = null;
+    title.value = content.value = tags.value = "";
+    type.value = "note";
+    modalTitle.innerText = "Add Note / Bookmark";
+}
+
+// ---------------------- Save / Edit Note ----------------------
+async function saveNote(){
+    let obj = {
+        type: type.value,
+        title: title.value,
+        content: content.value,
+        tags: tags.value,
+        pinned: false,
+        time: new Date().toLocaleString()
+    };
+    if(editID){ obj.id = editID; await put("notes",obj); }
+    else await add("notes",obj);
+    closeModal(); loadNotes();
+}
+
+// ---------------------- Load Notes ----------------------
+async function loadNotes(){
+    const container = notesList;
+    container.innerHTML = "";
+    let items = await getAll("notes");
+    items = items.sort((a,b)=>b.pinned - a.pinned);
+    items.forEach(n=>{
+        container.innerHTML += `
+        <div class="note-card">
+            <span class="pin ${n.pinned?"active":""}" onclick="togglePin(${n.id},${n.pinned})">📌</span>
+            <h3>${n.title}</h3>
+            <p>${n.type==='bookmark'?`<a href="${n.content}" target="_blank">${n.content}</a>`:n.content}</p>
+            <small>${n.tags}</small><br>
+            <small>${n.time}</small><br><br>
+            <button onclick="editNote(${n.id})">Edit</button>
+            <button onclick="deleteNote(${n.id})">Delete</button>
+        </div>`;
+    });
+}
+
+// ---------------------- Pin Toggle ----------------------
+async function togglePin(id,state){
+    let n = await get("notes",id);
+    n.pinned = !state;
+    await put("notes",n);
+    loadNotes();
+}
+
+// ---------------------- Delete Note ----------------------
+async function deleteNote(id){
+    await del("notes",id);
+    loadNotes();
+}
+
+// ---------------------- Edit Note ----------------------
+async function editNote(id){
+    let n = await get("notes",id);
+    editID = id;
+    title.value = n.title; content.value = n.content; tags.value = n.tags; type.value = n.type;
+    modalTitle.innerText = "Edit Note / Bookmark";
+    openModal();
+}
+
+// ---------------------- Init ----------------------
+openDB().then(loadNotes);
+</script>
+
+</body>
+</html>

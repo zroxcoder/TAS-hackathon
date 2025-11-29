@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Chat | Edumate</title>
+<style>
+:root {
+    --primary-orange: #ffb56b;
+    --soft-orange: #ffe0c2;
+    --dark-text: #333;
+    --light-bg: #fff;
+}
+
+/* SIDEBAR */
+#sidebar {
+    width: 260px;
+    height: 100vh;
+    position: fixed;
+    left: 0; top: 0;
+    background: var(--soft-orange);
+    padding-top: 20px;
+    overflow-y: auto;
+    box-shadow: 5px 0 12px rgba(0,0,0,0.1);
+}
+#sidebar h3 {
+    font-size:30px;font-weight:900;margin-left:20px;text-transform:uppercase;
+    text-shadow:2px 2px 4px rgba(0,0,0,0.2);
+}
+#sidebar .nav-link {
+    display:block;color:var(--dark-text);margin:6px 10px;padding:10px 15px;
+    border-radius:10px;text-decoration:none;font-weight:600;transition:0.25s;
+}
+#sidebar .nav-link:hover, #sidebar .nav-link.active {
+    background:var(--primary-orange); color:#000; transform:translateX(5px);
+}
+
+/* CONTENT */
+.content { margin-left:260px; padding:30px; min-height:100vh; background: var(--light-bg); }
+.section-title { font-size:26px; font-weight:800; margin-bottom:25px; }
+
+/* CHAT AREA */
+#chatBox {
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 15px;
+    background: var(--soft-orange);
+    max-height: 500px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.message { padding: 8px 12px; border-radius: 12px; max-width: 80%; word-wrap: break-word; }
+.user { background: var(--primary-orange); color: #000; align-self: flex-end; }
+.ai { background: #fff; color: #333; align-self: flex-start; border:1px solid #ccc; }
+
+/* INPUT AREA */
+#inputArea { display:flex; gap:10px; }
+#chatInput { flex-grow:1; padding:8px 10px; border-radius:8px; border:1px solid #ccc; }
+#sendBtn { padding:8px 16px; border:none; border-radius:8px; background:var(--primary-orange); color:#000; cursor:pointer; }
+
+/* ANIMATION */
+@keyframes fadeIn { from {opacity:0; transform: translateY(10px);} to {opacity:1; transform: translateY(0);} }
+.message { animation: fadeIn 0.3s ease-in-out; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h3>EDUMATE</h3>
+    <a class="nav-link" href="dashboard.html">📊 Dashboard</a>
+    <a class="nav-link" href="notes.html">📝 Notes</a>
+    <a class="nav-link" href="planner.html">📅 Planner</a>
+    <a class="nav-link" href="projects.html">📁 Projects</a>
+    <a class="nav-link" href="courses.html">🎓 Courses</a>
+    <a class="nav-link active" href="aichatbot.html">🤖 AI Chat</a>
+    <a class="nav-link" href="profile.html">⚙️ Profile</a>
+</div>
+
+<div class="content">
+    <h2 class="section-title">AI Chat Bot</h2>
+
+    <div id="chatBox" aria-live="polite"></div>
+
+    <div id="inputArea">
+        <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off" />
+        <button id="sendBtn" disabled>Send</button>
+        <button id="historyBtn" title="Search history" style="border-radius:8px;padding:8px 10px;border:1px solid #ccc;background:#fff;cursor:pointer;margin-left:6px;">History</button>
+    </div>
+    <div id="searchHistory" style="display:none;margin-top:12px;max-height:200px;overflow:auto;padding:10px;background:#fff;border-radius:8px;border:1px solid #e6e6e6;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong>Search History</strong>
+            <div>
+                <button id="clearSearchHistoryBtn" style="margin-left:8px;padding:6px 10px;border-radius:6px;border:none;background:var(--primary-orange);color:#000;cursor:pointer;">Clear</button>
+            </div>
+        </div>
+        <div id="searchHistoryList">Loading...</div>
+    </div>
+</div>
+
+<script>
+let db;
+
+/* ---------------------- DATABASE ---------------------- */
+function openDB() {
+    return new Promise((resolve,reject)=>{
+        const req = indexedDB.open("MateDB", 3);
+        req.onupgradeneeded = e => {
+            db = e.target.result;
+            ["tasks","notes","projects","courses","profile","activity","certificates","chats","searches"].forEach(store=>{
+                if(!db.objectStoreNames.contains(store)) db.createObjectStore(store,{keyPath:"id",autoIncrement:true});
+            });
+        };
+        req.onsuccess = e => { db = e.target.result; resolve(db); };
+        req.onerror = e => reject(e);
+    });
+}
+
+function get(store,key){
+    return new Promise((resolve,reject)=>{
+        try{
+            if(!db){ // fallback to localStorage
+                const raw = localStorage.getItem('edumate_'+store) || '[]';
+                const arr = JSON.parse(raw);
+                const res = arr.find(i=>i.id === key) || null;
+                return resolve(res);
+            }
+            const tx = db.transaction(store,"readonly");
+            const req = tx.objectStore(store).get(key);
+            req.onsuccess = ()=>resolve(req.result);
+            req.onerror = ()=>resolve(null);
+        }catch(err){ resolve(null); }
+    });
+}
+function getAll(store){
+    return new Promise((resolve,reject)=>{
+        try{
+            if(!db){ // fallback to localStorage
+                const raw = localStorage.getItem('edumate_'+store) || '[]';
+                const arr = JSON.parse(raw);
+                return resolve(arr || []);
+            }
+            const tx = db.transaction(store,"readonly");
+            const req = tx.objectStore(store).getAll();
+            req.onsuccess = ()=>resolve(req.result || []);
+            req.onerror = ()=>resolve([]);
+        }catch(err){ resolve([]); }
+    });
+}
+function add(store,obj){
+    return new Promise((resolve,reject)=>{
+        try{
+            if(!db){ // fallback to localStorage
+                const raw = localStorage.getItem('edumate_'+store) || '[]';
+                const arr = JSON.parse(raw);
+                // ensure an id
+                const id = (arr.length ? Math.max(...arr.map(x=>x.id||0)) : 0) + 1;
+                const item = Object.assign({id}, obj);
+                arr.push(item);
+                localStorage.setItem('edumate_'+store, JSON.stringify(arr));
+                return resolve(id);
+            }
+            const tx = db.transaction(store,"readwrite");
+            const req = tx.objectStore(store).add(obj);
+            req.onsuccess = ()=>resolve(req.result);
+            req.onerror = ()=>reject(req.error);
+        }catch(err){ reject(err); }
+    });
+}
+function put(store,obj){
+    return new Promise((resolve,reject)=>{
+        try{
+            if(!db){ // fallback to localStorage
+                const raw = localStorage.getItem('edumate_'+store) || '[]';
+                const arr = JSON.parse(raw);
+                const idx = arr.findIndex(x=>x.id === obj.id);
+                if(idx >= 0) arr[idx] = obj; else arr.push(obj);
+                localStorage.setItem('edumate_'+store, JSON.stringify(arr));
+                return resolve(obj.id);
+            }
+            const tx = db.transaction(store,"readwrite");
+            const req = tx.objectStore(store).put(obj);
+            req.onsuccess = ()=>resolve(req.result);
+            req.onerror = ()=>reject(req.error);
+        }catch(err){ reject(err); }
+    });
+}
+function del(store,key){
+    return new Promise((resolve,reject)=>{
+        try{
+            if(!db){ // fallback to localStorage
+                const raw = localStorage.getItem('edumate_'+store) || '[]';
+                const arr = JSON.parse(raw);
+                const filtered = arr.filter(x=>x.id !== key);
+                localStorage.setItem('edumate_'+store, JSON.stringify(filtered));
+                return resolve();
+            }
+            const tx = db.transaction(store,"readwrite");
+            const req = tx.objectStore(store).delete(key);
+            req.onsuccess = ()=>resolve();
+            req.onerror = ()=>reject(req.error);
+        }catch(err){ reject(err); }
+    });
+}
+
+/* ---------------------- CHAT FUNCTIONS ---------------------- */
+const chatBox = document.getElementById("chatBox");
+const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendBtn");
+
+async function loadChat() {
+    chatBox.innerHTML = "";
+    const chats = await getAll("chats");
+    (chats || []).forEach(c=>{
+        const div = document.createElement("div");
+        div.className = "message " + (c.sender==="user" ? "user" : "ai");
+        div.innerHTML = formatMessageToHtml(c.text || '');
+        chatBox.appendChild(div);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function escapeHtml(str){
+    if(!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatMessageToHtml(text){
+    // convert plain text to simple HTML: lists and line breaks
+    const t = String(text || '');
+    const lines = t.split(/\r?\n/).map(l => l.trim()).filter(l => l.length>0);
+    if(lines.length === 0) return '';
+
+    // if several lines start with '- ' treat as a list
+    const isList = lines.every(l => l.startsWith('- ')) && lines.length>0;
+    if(isList){
+        const items = lines.map(l => '<li>' + escapeHtml(l.replace(/^[-\u2022]\s*/,'').trim()) + '</li>').join('');
+        return `<ul style="margin:4px 0 4px 18px;padding:0;">${items}</ul>`;
+    }
+
+    // otherwise join with <br>
+    const joined = t;
+    return linkifyRaw(joined).replace(/\n/g, '<br>');
+}
+
+function linkifyRaw(raw){
+    // Convert plain text containing URLs into safe HTML with anchors
+    if(!raw) return '';
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    let out = '';
+    let lastIndex = 0;
+    let m;
+    while((m = urlRegex.exec(raw)) !== null){
+        const idx = m.index;
+        const url = m[0];
+        out += escapeHtml(raw.substring(lastIndex, idx));
+        const safeHref = escapeHtml(url);
+        out += `<a href="${safeHref}" target="_blank" rel="noopener">${escapeHtml(url)}</a>`;
+        lastIndex = idx + url.length;
+    }
+    out += escapeHtml(raw.substring(lastIndex));
+    return out;
+}
+
+async function logSearch(query){
+    try{
+        const item = {query: query, time: new Date().toISOString()};
+        // try add to IndexedDB if available
+        try{ await add('searches', item); }catch(e){ /* fallback to localStorage below */ }
+        // also append to localStorage history
+        try{
+            const raw = localStorage.getItem('edumate_searches') || '[]';
+            const arr = JSON.parse(raw);
+            arr.push(item);
+            localStorage.setItem('edumate_searches', JSON.stringify(arr));
+        }catch(e){}
+        // refresh history UI if visible
+        try{ if(document.getElementById('searchHistory') && document.getElementById('searchHistory').style.display==='block') loadSearchHistory(); }catch(e){}
+    }catch(e){ /* ignore */ }
+}
+
+// ---------------------- Search History UI ----------------------
+async function loadSearchHistory(){
+    const listEl = document.getElementById('searchHistoryList');
+    listEl.innerHTML = 'Loading...';
+    try{
+        // get from IndexedDB first
+        let items = await getAll('searches');
+        if(!items || !items.length){
+            // fall back to localStorage
+            const raw = localStorage.getItem('edumate_searches') || '[]';
+            items = JSON.parse(raw);
+        } else {
+            // also merge any localStorage-only entries
+            try{
+                const raw = localStorage.getItem('edumate_searches') || '[]';
+                const ls = JSON.parse(raw);
+                // merge by time or query
+                ls.forEach(s => { if(!items.find(i=>i.time === s.time && i.query === s.query)) items.push(s); });
+                // sort newest first
+                items = items.sort((a,b)=> new Date(b.time) - new Date(a.time));
+            }catch(e){}
+        }
+        if(!items || !items.length){ listEl.innerHTML = '<div style="opacity:0.7">No searches yet.</div>'; return; }
+        listEl.innerHTML = '';
+        items.slice().reverse().forEach((s, idx)=>{
+            const div = document.createElement('div');
+            div.style.padding = '6px 0';
+            div.style.borderBottom = '1px solid #f0f0f0';
+            const q = document.createElement('div'); q.style.marginBottom = '4px'; q.innerText = s.query;
+            const meta = document.createElement('div'); meta.style.fontSize='12px'; meta.style.opacity='0.7'; meta.innerText = new Date(s.time).toLocaleString();
+            const actions = document.createElement('div'); actions.style.marginTop='6px';
+            const openBtn = document.createElement('button'); openBtn.innerText='Open'; openBtn.style.marginRight='6px'; openBtn.onclick = ()=>{ openScholarQuery(s.query); };
+            const delBtn = document.createElement('button'); delBtn.innerText='Delete'; delBtn.onclick = async ()=>{ await deleteSearchEntry(s); await loadSearchHistory(); };
+            actions.appendChild(openBtn); actions.appendChild(delBtn);
+            div.appendChild(q); div.appendChild(meta); div.appendChild(actions);
+            listEl.appendChild(div);
+        });
+    }catch(err){ listEl.innerHTML = '<div style="color:#b00">Failed to load history</div>'; }
+}
+
+function toggleSearchHistory(){
+    const el = document.getElementById('searchHistory');
+    if(el.style.display === 'none' || !el.style.display) { el.style.display='block'; loadSearchHistory(); }
+    else el.style.display='none';
+}
+
+function openScholarQuery(topic){
+    const url = 'https://scholar.google.com/scholar?q=' + encodeURIComponent(topic);
+    try{ window.open(url, '_blank'); }catch(e){ location.href = url; }
+}
+
+async function deleteSearchEntry(entry){
+    try{
+        // try delete by id in IndexedDB
+        if(entry && entry.id){ await del('searches', entry.id); }
+    }catch(e){}
+    try{
+        // also remove from localStorage list by matching time+query
+        const raw = localStorage.getItem('edumate_searches') || '[]';
+        let arr = JSON.parse(raw);
+        arr = arr.filter(s => !(s.time === entry.time && s.query === entry.query));
+        localStorage.setItem('edumate_searches', JSON.stringify(arr));
+    }catch(e){}
+}
+
+
+async function clearChats(){
+    try{
+        if(db){
+            return new Promise((resolve,reject)=>{
+                try{
+                    const tx = db.transaction('chats','readwrite');
+                    const req = tx.objectStore('chats').clear();
+                    req.onsuccess = ()=>{
+                        try{ localStorage.setItem('edumate_chats','[]'); }catch(e){}
+                        resolve();
+                    };
+                    req.onerror = ()=>{ try{ localStorage.setItem('edumate_chats','[]'); }catch(e){}; resolve(); };
+                }catch(err){ try{ localStorage.setItem('edumate_chats','[]'); }catch(e){}; resolve(); }
+            });
+        } else {
+            localStorage.setItem('edumate_chats','[]');
+        }
+    }catch(e){ /* ignore */ }
+}
+
+async function sendMessage() {
+    const text = chatInput.value.trim();
+    if(!text) return;
+    sendBtn.disabled = true;
+    try{
+        await add("chats",{sender:"user", text, time:new Date().toISOString()});
+        await logActivity(`Sent chat: ${text}`);
+        chatInput.value = "";
+        await loadChat();
+
+        const aiText = await getAIResponse(text);
+        await add("chats",{sender:"ai", text: aiText, time:new Date().toISOString()});
+        await logActivity(`AI replied: ${aiText}`);
+        await loadChat();
+    }catch(err){
+        console.error("Send failed", err);
+        // show error to user in chat
+        try{ await add("chats",{sender:"ai", text: "Sorry, something went wrong while sending your message.", time:new Date().toISOString()}); await loadChat(); }catch(e){}
+    }finally{
+        sendBtn.disabled = false;
+        chatInput.focus();
+    }
+}
+
+/* ---------------------- AI RESPONSE ---------------------- */
+async function getAIResponse(userText){
+    const tasks = await getAll("tasks");
+    const projects = await getAll("projects");
+    const courses = await getAll("courses");
+    const notes = await getAll("notes");
+    
+    const text = (userText || "").toLowerCase();
+
+    // Greeting
+    if(/\b(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(text)){
+        return "Hello — how can I help you? You can ask me things like:\n- \"What should I do first?\"\n- \"Show my tasks\"\n- \"How to add notes?\"\n- \"Show FAQ\"";
+    }
+
+    if(text === 'help' || text === 'commands' || text.includes('show faq')){
+        return "I can help with:\n- Suggesting what to work on next (ask \"what should I do first\")\n- Listing pending tasks/projects/courses (ask \"show my tasks\")\n- FAQ about using Edumate (ask e.g. \"how to add notes\")\n- Simple chat replies (say hello)\n\nQuick commands:\n- show my tasks\n- show my projects\n- show my courses\n- what should i do first\n- clear chat";
+    }
+
+    // show lists
+    if(text.includes('show my tasks') || text.includes('list tasks') || text.includes('my tasks')){
+        const pending = (tasks||[]).filter(t=>!t.done).sort((a,b)=> (b.priority||0)-(a.priority||0));
+        if(!pending.length) return "You have no pending tasks 🎉";
+        const top = pending.slice(0,10).map(t=>`- ${t.title || 'Untitled'} (priority: ${t.priority||'Medium'}${t.deadline?(' — due '+t.deadline):''})`).join('\n');
+        return `Here are your pending tasks:\n${top}`;
+    }
+    if(text.includes('show my projects') || text.includes('list projects') || text.includes('my projects')){
+        const pending = (projects||[]).filter(p=>!p.done).sort((a,b)=> (b.priority||0)-(a.priority||0));
+        if(!pending.length) return "You have no pending projects 🎉";
+        const top = pending.slice(0,10).map(p=>`- ${p.title || 'Untitled'} (priority: ${p.priority||'Medium'}${p.deadline?(' — due '+p.deadline):''})`).join('\n');
+        return `Here are your pending projects:\n${top}`;
+    }
+    if(text.includes('show my courses') || text.includes('list courses') || text.includes('my courses')){
+        const pending = (courses||[]).filter(c=>!c.done).sort((a,b)=> (b.priority||0)-(a.priority||0));
+        if(!pending.length) return "You have no pending course lessons 🎉";
+        const top = pending.slice(0,10).map(c=>`- ${c.title || 'Untitled'} (priority: ${c.priority||'Medium'}${c.endDate?(' — ends '+c.endDate):''})`).join('\n');
+        return `Here are your pending course items:\n${top}`;
+    }
+
+    // clear chat request
+    if(text.includes('clear chat') || text.includes('clear chats') || text.includes('reset chat')){
+        await clearChats();
+        return 'All chat messages cleared.';
+    }
+
+    // Research / papers search -> Google Scholar
+    if(text.includes('research') || text.includes('research paper') || text.includes('research papers') || text.includes('papers on') || text.includes('find papers') || text.includes('scholar')){
+        // Try to extract topic: prefer text after 'on' or 'about', otherwise use whole input minus trigger words
+        let topic = userText;
+        const onMatch = userText.toLowerCase().lastIndexOf(' on ');
+        const aboutMatch = userText.toLowerCase().lastIndexOf(' about ');
+        if(onMatch !== -1) topic = userText.substring(onMatch + 4).trim();
+        else if(aboutMatch !== -1) topic = userText.substring(aboutMatch + 7).trim();
+        else {
+            // remove some common trigger phrases
+            topic = userText.replace(/(find|search|show|give|results|of|research|papers|paper|scholar)/gi, '').trim();
+        }
+        if(!topic) topic = userText;
+        const qs = encodeURIComponent(topic);
+        const url = `https://scholar.google.com/scholar?q=${qs}`;
+        // Log the search
+        try{ await logSearch(topic); }catch(e){}
+        return `I found results on Google Scholar for "${topic}":\n- ${url}`;
+    }
+
+    // Suggest next work based on priority and deadlines
+    if(text.includes("what should i do") || text.includes("priority") || text.includes("finish first") || text.includes('what to do')){
+        const pendingTasks = (tasks || []).filter(t => !t.done);
+        const pendingProjects = (projects || []).filter(p => !p.done);
+        const pendingCourses = (courses || []).filter(c => !c.done);
+
+        // Sort by priority (desc) then by due date (asc)
+        const parseDate = d => {
+            try{ return d ? new Date(d) : null; }catch(e){return null}
+        };
+        const cmp = (a,b)=>{
+            const pa = a.priority||0, pb = b.priority||0;
+            if(pa !== pb) return pb - pa;
+            const da = parseDate(a.dueDate), db = parseDate(b.dueDate);
+            if(da && db) return da - db;
+            if(da && !db) return -1;
+            if(!da && db) return 1;
+            return 0;
+        };
+
+        const sortedTasks = pendingTasks.slice().sort(cmp);
+        const sortedProjects = pendingProjects.slice().sort(cmp);
+
+        const suggestions = [];
+        if(sortedTasks.length){
+            const t = sortedTasks[0];
+            suggestions.push(`Task: "${t.title || 'Untitled'}" — priority: ${t.priority||'medium'}${t.dueDate?(' — due: '+t.dueDate):''}`);
+        }
+        if(sortedProjects.length){
+            const p = sortedProjects[0];
+            suggestions.push(`Project: "${p.title || 'Untitled'}" — priority: ${p.priority||'medium'}${p.dueDate?(' — due: '+p.dueDate):''}`);
+        }
+        if(pendingCourses.length){
+            const c = pendingCourses[0];
+            suggestions.push(`Course lesson: "${c.title || 'Untitled'}"`);
+        }
+        if(suggestions.length) return "Here are the highest priority items:\n" + suggestions.join("\n") + "\n\nQuick tips:\n- To mark items done, use the Planner or Projects pages.\n- Ask \"show my tasks\" to view more items.\n- Ask \"show FAQ\" for help using features.";
+        return "All tasks, projects, and courses look complete — great job!";
+    }
+
+    // Expanded FAQ lookup (phrase matching)
+    const faq = [
+        {q:"how to add notes", a:"Go to Notes page, click 'Add Note', enter content and save."},
+        {q:"how to create a project", a:"Go to Projects page, click 'Add Project', fill details and save."},
+        {q:"how to track progress", a:"Check Dashboard for graphs and completion stats; mark tasks/projects done to update progress."},
+        {q:"how to upload certificates", a:"Go to Profile page, select 'Upload Certificate', choose file, and save."},
+        {q:"how to add task", a:"Open Planner, click '+', enter title/description/priority and save. Use the checkbox to mark Done."},
+        {q:"how to use planner", a:"Planner is your to-do list: filter by priority, search tasks, pin important items, and set deadlines."},
+        {q:"how to use projects", a:"Projects group related tasks. Add subtasks and deadlines. Mark completed subtasks to track progress."},
+        {q:"how to use courses", a:"Courses store lessons; mark lessons done as you finish them and track end dates."}
+    ];
+    for(const f of faq){ if(text.includes(f.q.toLowerCase().replace('?',''))) return f.a; }
+
+    
+
+    // Fallback
+    return `I read your data. You said: "${userText}". You can ask "what should I do first" or FAQ questions.`;
+}
+
+/* ---------------------- ACTIVITY LOG ---------------------- */
+async function logActivity(action){
+    try{ await add("activity",{action,time:new Date().toISOString()}); }catch(e){ /* ignore */ }
+}
+
+/* ---------------------- INIT ---------------------- */
+sendBtn.addEventListener("click", sendMessage);
+chatInput.addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); sendMessage(); } });
+document.getElementById('historyBtn').addEventListener('click', toggleSearchHistory);
+document.getElementById('clearSearchHistoryBtn').addEventListener('click', async ()=>{
+    if(!confirm('Clear all search history?')) return;
+    try{
+        // clear IndexedDB searches
+        if(db){
+            const items = await getAll('searches');
+            for(const it of (items||[])){
+                if(it && it.id) await del('searches', it.id);
+            }
+        }
+    }catch(e){}
+    try{ localStorage.setItem('edumate_searches','[]'); }catch(e){}
+    await loadSearchHistory();
+});
+
+openDB()
+    .then(() => {
+        sendBtn.disabled = false;
+        chatInput.focus();
+        return loadChat();
+    })
+    .catch(err => {
+        console.error("DB open failed", err);
+        // still enable sending but without persistence
+        sendBtn.disabled = false;
+    });
+</script>
+
+</body>
+</html>

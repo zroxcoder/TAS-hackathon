@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard | Edumate</title>
+<style>
+:root {
+    --primary-orange: #ffb56b;
+    --soft-orange: #ffe0c2;
+    --dark-text: #333;
+    --light-bg: #ffffff;
+}
+
+/* SIDEBAR */
+#sidebar { width:260px;height:100vh;position:fixed;left:0;top:0;background:var(--soft-orange);padding-top:20px;overflow-y:auto;box-shadow:5px 0 12px rgba(0,0,0,0.1); }
+#sidebar h3 { font-size:30px;font-weight:900;letter-spacing:1px;text-transform:uppercase;text-shadow:2px 2px 4px rgba(0,0,0,0.2);text-align:center;animation:fadeIn 1s ease-in-out; }
+#sidebar .nav-link { display:block;color:var(--dark-text);font-weight:600;margin:6px 10px;padding:10px 15px;border-radius:10px;transition:0.25s ease-in-out;text-decoration:none; }
+#sidebar .nav-link:hover,#sidebar .nav-link.active { background:var(--primary-orange);color:#000;transform:translateX(5px); }
+
+/* MAIN CONTENT */
+.content { margin-left:260px;padding:25px 30px;background:var(--light-bg);min-height:100vh;color:var(--dark-text); }
+.dashboard-section { margin-bottom:35px; }
+.dashboard-section h4 { margin-bottom:18px;font-weight:700; }
+.dashboard-card { background:var(--soft-orange);border-radius:14px;padding:20px;box-shadow:0 4px 10px rgba(0,0,0,0.15);transition:transform 0.25s ease,box-shadow 0.25s ease;animation:slideUp 0.6s ease-in-out;margin-bottom:25px; }
+.dashboard-card:hover { transform:translateY(-5px); box-shadow:0 8px 16px rgba(0,0,0,0.22); }
+#quote { font-weight:500;margin-bottom:5px;display:inline-block; }
+#author { display:block;margin-top:-5px; }
+#newscontainer div,#notifications div { background:var(--soft-orange);padding:12px;margin-bottom:10px;border-radius:6px;font-weight:500;animation:fadeIn 0.8s ease-in-out; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
+@keyframes slideUp { from { opacity:0; transform:translateY(20px);} to { opacity:1; transform:translateY(0);} }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h3>EDUMATE</h3>
+    <a class="nav-link active" href="dashboard.html">📊 Dashboard</a>
+    <a class="nav-link" href="notes.html">📝 Notes</a>
+    <a class="nav-link" href="planner.html">📅 Planner</a>
+    <a class="nav-link" href="projects.html">📁 Projects</a>
+    <a class="nav-link" href="courses.html">🎓 Courses</a>
+    <a class="nav-link" href="aichatbot.html">🤖 AI Chat</a>
+    <a class="nav-link" href="profile.html">⚙️ Profile</a>
+</div>
+
+<div class="content">
+    <h2 id="greetText">Loading...</h2>
+
+    <div class="dashboard-section">
+        <h4>✨ Daily Quote</h4>
+        <div class="dashboard-card">
+            <span id="quote">Loading...</span><br>
+            <small id="author"></small>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <h4>📰 Education News</h4>
+        <div class="dashboard-card" id="newscontainer">Loading...</div>
+    </div>
+
+    <div class="dashboard-section">
+        <h4>🔔 Upcoming Deadlines</h4>
+        <div class="dashboard-card" id="notifications">Loading...</div>
+    </div>
+</div>
+
+<script>
+// ---------------------- IndexedDB Helper ----------------------
+let db;
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open("MateDB", 3);
+        req.onupgradeneeded = e => {
+            db = e.target.result;
+            ["notes","tasks","projects","courses","profile","activity","certificates","chats","searches"].forEach(store=>{
+                if(!db.objectStoreNames.contains(store)) db.createObjectStore(store,{keyPath:"id",autoIncrement:true});
+            });
+        };
+        req.onsuccess = e => { db = e.target.result; resolve(db); };
+        req.onerror = e => reject(e);
+    });
+}
+
+function get(storeName, key) {
+    return new Promise(resolve => {
+        const tx = db.transaction(storeName,"readonly");
+        const req = tx.objectStore(storeName).get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+    });
+}
+
+function getAll(storeName) {
+    return new Promise(resolve => {
+        const tx = db.transaction(storeName,"readonly");
+        const req = tx.objectStore(storeName).getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve([]);
+    });
+}
+
+// ---------------------- Local Quotes & News ----------------------
+const quotes = [
+    { text: "Education is the key to unlocking the world.", author: "Oprah" },
+    { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
+    { text: "The future belongs to the learners.", author: "Eric Hoffer" },
+    { text: "Learning never exhausts the mind.", author: "Leonardo da Vinci" }
+];
+const news = [
+    { title: "New AI tools transforming student learning", source: "EduTech" },
+    { title: "Global shift toward digital classrooms", source: "Education Weekly" },
+    { title: "Students improve grades with micro-learning", source: "StudyLab" }
+];
+
+// ---------------------- Dashboard ----------------------
+async function initDashboard() {
+    // Load username
+    let profile = await get("profile",1);
+    const username = profile?.username || "Student";
+
+    // Greeting
+    const hour = new Date().getHours();
+    const greet = hour<12?"Good Morning":hour<17?"Good Afternoon":"Good Evening";
+    document.getElementById("greetText").textContent = `${greet}, ${username}!`;
+
+    // Random Quote
+    const q = quotes[Math.floor(Math.random()*quotes.length)];
+    document.getElementById("quote").textContent = `"${q.text}"`;
+    document.getElementById("author").textContent = `— ${q.author}`;
+
+    // News
+    const newsBox = document.getElementById("newscontainer");
+    newsBox.innerHTML = "";
+    news.forEach(n => newsBox.innerHTML += `<div>📌 <b>${n.title}</b> — ${n.source}</div>`);
+
+    // Upcoming Deadlines
+    const stores = ["tasks","projects","courses"];
+    const notifBox = document.getElementById("notifications");
+    notifBox.innerHTML = "";
+    let hasDeadline = false;
+    for(const store of stores){
+        const items = await getAll(store);
+        items.forEach(item => {
+            if(item.deadline){
+                hasDeadline = true;
+                notifBox.innerHTML += `<div>📅 <b>${item.title}</b> — Deadline: ${item.deadline}</div>`;
+            }
+        });
+    }
+    if(!hasDeadline) notifBox.textContent = "No upcoming deadlines 🎉";
+}
+
+// ---------------------- Init ----------------------
+openDB().then(initDashboard);
+</script>
+
+</body>
+</html>

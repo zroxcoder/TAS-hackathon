@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Planner | Edumate</title>
+<style>
+:root {
+    --primary-orange: #ffb56b;
+    --soft-orange: #ffe0c2;
+    --dark-text: #333;
+    --light-bg: #ffffff;
+}
+/* SIDEBAR */
+#sidebar { width:260px;height:100vh;position:fixed;left:0;top:0;background:var(--soft-orange);padding-top:20px;overflow-y:auto;box-shadow:5px 0 12px rgba(0,0,0,0.1); }
+#sidebar h3 { font-size:30px;font-weight:900;letter-spacing:1px;text-transform:uppercase;text-shadow:2px 2px 4px rgba(0,0,0,0.2);margin-left:20px;text-align:left;animation:fadeIn 1s ease-in-out; }
+#sidebar .nav-link { display:block;color:var(--dark-text);font-weight:600;margin:6px 10px;padding:10px 15px;border-radius:10px;transition:0.25s ease-in-out;text-decoration:none; }
+#sidebar .nav-link:hover,#sidebar .nav-link.active { background:var(--primary-orange);color:#000;transform:translateX(5px); }
+/* MAIN CONTENT */
+.content { margin-left:260px;padding:30px;min-height:100vh;background:var(--light-bg);}
+.section-title { font-size:26px;font-weight:800;margin-bottom:25px; }
+.top-controls { display:flex;gap:15px;margin-bottom:20px;}
+.top-controls input,.top-controls select { padding:10px;border-radius:8px;border:1px solid #aaa;}
+.task-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;}
+.task-card { background:var(--soft-orange);border-radius:12px;padding:15px;box-shadow:0px 4px 10px rgba(0,0,0,0.15);position:relative;animation:fadeIn 0.6s;}
+.task-card h3 { margin:0; }
+.priority-high { color:red;font-weight:bold; }
+.priority-medium { color:orange;font-weight:bold; }
+.priority-low { color:green;font-weight:bold; }
+.pin { position:absolute;right:12px;top:12px;font-size:20px;cursor:pointer; }
+.pin.active { color:gold; }
+.add-btn { position:fixed;right:40px;bottom:40px;background:var(--primary-orange);color:#fff;font-size:30px;width:65px;height:65px;border-radius:50%;border:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);cursor:pointer; }
+.modal { position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.45);display:none;justify-content:center;align-items:center; }
+.modal-content { background:var(--soft-orange);padding:25px;width:420px;border-radius:12px;box-shadow:0 4px 10px black;}
+.modal-content input,.modal-content textarea,.modal-content select { width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #aaa;}
+.modal-content button { background:var(--primary-orange);padding:10px 20px;border:none;margin-right:8px;border-radius:8px;cursor:pointer;}
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h3>EDUMATE</h3>
+    <a class="nav-link" href="dashboard.html">📊 Dashboard</a>
+    <a class="nav-link" href="notes.html">📝 Notes</a>
+    <a class="nav-link active" href="planner.html">📅 Planner</a>
+    <a class="nav-link" href="projects.html">📁 Projects</a>
+    <a class="nav-link" href="courses.html">🎓 Courses</a>
+    <a class="nav-link" href="aichatbot.html">🤖 AI Chat</a>
+    <a class="nav-link" href="profile.html">⚙️ Profile</a>
+</div>
+
+<div class="content">
+    <h2 class="section-title">Planner / To-Do List</h2>
+
+    <div class="top-controls">
+        <input type="text" id="searchInput" onkeyup="loadTasks()" placeholder="Search tasks...">
+        <select id="priorityFilter" onchange="loadTasks()">
+            <option value="all">All Priorities</option>
+            <option value="High">High Priority</option>
+            <option value="Medium">Medium Priority</option>
+            <option value="Low">Low Priority</option>
+        </select>
+    </div>
+
+    <div class="task-grid" id="taskList"></div>
+</div>
+
+<button class="add-btn" onclick="openModal()">+</button>
+
+<div id="taskModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modalTitle">Add New Task</h3>
+        <input type="text" id="taskTitle" placeholder="Task Title">
+        <textarea id="taskDesc" placeholder="Description"></textarea>
+        <input type="date" id="taskDeadline">
+        <select id="taskPriority">
+            <option value="High">🔥 High Priority</option>
+            <option value="Medium">⚡ Medium Priority</option>
+            <option value="Low">🌿 Low Priority</option>
+        </select>
+        <button onclick="saveTask()">Save</button>
+        <button onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<script>
+let db;
+let editID=null;
+
+// ---------------------- IndexedDB Helper ----------------------
+function openDB() {
+    return new Promise((resolve,reject)=>{
+        const req=indexedDB.open("MateDB",3);
+        req.onupgradeneeded = e => {
+            db=e.target.result;
+            ["tasks","notes","projects","courses","profile","activity","certificates","chats","searches"].forEach(store=>{
+                if(!db.objectStoreNames.contains(store)) db.createObjectStore(store,{keyPath:"id",autoIncrement:true});
+            });
+        };
+        req.onsuccess = e => { db=e.target.result; resolve(db); };
+        req.onerror = e => reject(e);
+    });
+}
+function get(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readonly"); const req=tx.objectStore(store).get(key); req.onsuccess=()=>resolve(req.result); req.onerror=()=>resolve(null); });}
+function getAll(store){return new Promise(resolve=>{ const tx=db.transaction(store,"readonly"); const req=tx.objectStore(store).getAll(); req.onsuccess=()=>resolve(req.result); req.onerror=()=>resolve([]); });}
+function add(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).add(obj); req.onsuccess=()=>resolve(); });}
+function put(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).put(obj); req.onsuccess=()=>resolve(); });}
+function del(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).delete(key); req.onsuccess=()=>resolve(); });}
+
+// ---------------------- Modal ----------------------
+function openModal(isEdit=false){ document.getElementById("taskModal").style.display="flex"; }
+function closeModal(){ 
+    document.getElementById("taskModal").style.display="none";
+    editID=null; taskTitle.value=""; taskDesc.value=""; taskDeadline.value=""; taskPriority.value="Low";
+    document.getElementById("modalTitle").innerText="Add New Task";
+}
+
+// ---------------------- Save/Edit Task ----------------------
+async function saveTask(){
+    // preserve done state when editing
+    let doneState = false;
+    if(editID){
+        const existing = await get("tasks", editID);
+        doneState = existing && existing.done ? true : false;
+    }
+    let task={
+        title: taskTitle.value,
+        desc: taskDesc.value,
+        deadline: taskDeadline.value,
+        priority: taskPriority.value,
+        pinned: false,
+        done: doneState,
+        time: new Date().toLocaleString()
+    };
+    if(editID){ task.id=editID; await put("tasks",task); }
+    else await add("tasks",task);
+    closeModal(); loadTasks();
+}
+ 
+// ---------------------- Load Tasks ----------------------
+async function loadTasks(){
+    const container=document.getElementById("taskList");
+    container.innerHTML="";
+    const search=searchInput.value.toLowerCase();
+    const filter=priorityFilter.value;
+
+    let list=await getAll("tasks");
+    list=list.sort((a,b)=>b.pinned-a.pinned)
+             .filter(t=>t.title.toLowerCase().includes(search))
+             .filter(t=>filter==="all"||t.priority===filter);
+
+    list.forEach(task=>{
+        container.innerHTML+=`
+        <div class="task-card">
+            <span class="pin ${task.pinned?"active":""}" onclick="togglePin(${task.id},${task.pinned})">📌</span>
+            <label style="display:inline-block;margin-left:8px;">
+                <input type="checkbox" onchange="toggleDone(${task.id}, this.checked)" ${task.done ? "checked" : ""}> Done
+            </label>
+            <h3>${task.title}</h3>
+            <p>${task.desc}</p>
+            <p><b>Deadline:</b> ${task.deadline}</p>
+            <p class="priority-${task.priority.toLowerCase()}">${task.priority}</p>
+            <small>${task.time}</small><br><br>
+            <button onclick="editTask(${task.id})">Edit</button>
+            <button onclick="deleteTask(${task.id})">Delete</button>
+        </div>`;
+    });
+}
+ 
+// ---------------------- Edit Task ----------------------
+async function editTask(id){
+    let t=await get("tasks",id);
+    editID=id;
+    taskTitle.value=t.title; taskDesc.value=t.desc; taskDeadline.value=t.deadline; taskPriority.value=t.priority;
+    document.getElementById("modalTitle").innerText="Edit Task";
+    openModal(true);
+}
+ 
+// ---------------------- Toggle Done ----------------------
+async function toggleDone(id, state){
+    let t = await get("tasks", id);
+    if(!t) return;
+    t.done = !!state;
+    await put("tasks", t);
+    // notify other pages/tabs to refresh their views (profile chart)
+    try{ localStorage.setItem('edumate-update', JSON.stringify({time:Date.now(), store:'tasks'})); }catch(e){}
+    loadTasks();
+}
+
+// ---------------------- Delete Task ----------------------
+async function deleteTask(id){ await del("tasks",id); loadTasks(); }
+
+// ---------------------- Pin Toggle ----------------------
+async function togglePin(id,state){
+    let t=await get("tasks",id);
+    t.pinned=!state;
+    await put("tasks",t);
+    loadTasks();
+}
+
+// ---------------------- Init ----------------------
+openDB().then(loadTasks);
+</script>
+
+</body>
+</html>

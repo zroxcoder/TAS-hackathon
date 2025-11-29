@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Profile | Edumate</title>
+<style>
+:root {
+    --primary-orange: #ffb56b;
+    --soft-orange: #ffe0c2;
+    --dark-text: #333;
+    --light-bg: #fff;
+}
+
+/* SIDEBAR */
+#sidebar {
+    width: 260px;
+    height: 100vh;
+    position: fixed;
+    left: 0; top: 0;
+    background: var(--soft-orange);
+    padding-top: 20px;
+    overflow-y: auto;
+    box-shadow: 5px 0 12px rgba(0,0,0,0.1);
+}
+#sidebar h3 { font-size:30px;font-weight:900;margin-left:20px;text-transform:uppercase;text-shadow:2px 2px 4px rgba(0,0,0,0.2); }
+#sidebar .nav-link { display:block;color:var(--dark-text);margin:6px 10px;padding:10px 15px;border-radius:10px;text-decoration:none;font-weight:600;transition:0.25s; }
+#sidebar .nav-link:hover, #sidebar .nav-link.active { background:var(--primary-orange); color:#000; transform:translateX(5px); }
+
+/* CONTENT */
+.content { margin-left:260px; padding:30px; min-height:100vh; background: var(--light-bg); }
+.section-title { font-size:26px; font-weight:800; margin-bottom:25px; }
+
+/* PROFILE CARD */
+.profile-card {
+    background: var(--soft-orange);
+    padding: 20px;
+    border-radius: 12px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 25px;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.15);
+}
+.profile-card img {
+    width: 90px; height: 90px; border-radius: 50%; object-fit: cover;
+}
+.profile-details { flex-grow:1; display:flex; flex-direction:column; gap:8px; }
+.profile-details label { font-weight:600; margin-top:5px; }
+.profile-details input { padding:6px 8px; border-radius:6px; border:1px solid #ccc; width:100%; }
+
+/* CERTIFICATES */
+.certificates-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:15px; margin-bottom:25px; }
+.certificate-card { background:var(--soft-orange); padding:10px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.15); text-align:center; word-wrap:break-word; }
+
+/* RECENT ACTIVITY */
+.activity-grid { display:flex; flex-direction:column; gap:8px; max-height:250px; overflow-y:auto; margin-bottom:25px; }
+.activity-card { background:var(--soft-orange); padding:8px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); font-size:14px; }
+
+/* PROGRESS CHART */
+#progressChart { max-width:600px; margin-bottom:30px; height:300px; display:block; } /* ensure visible area for Chart.js */
+
+/* DATA CONTROLS */
+.data-controls { display:flex; gap:15px; margin-top:20px; }
+.data-controls button { padding:10px 20px; border:none; border-radius:8px; background:var(--primary-orange); color:#fff; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h3>EDUMATE</h3>
+    <a class="nav-link" href="dashboard.html">📊 Dashboard</a>
+    <a class="nav-link" href="notes.html">📝 Notes</a>
+    <a class="nav-link" href="planner.html">📅 Planner</a>
+    <a class="nav-link" href="projects.html">📁 Projects</a>
+    <a class="nav-link" href="courses.html">🎓 Courses</a>
+    <a class="nav-link" href="aichatbot.html">🤖 AI Chat</a>
+    <a class="nav-link active" href="profile.html">⚙️ Profile</a>
+</div>
+
+<div class="content">
+    <h2 class="section-title">Profile & Settings</h2>
+
+    <!-- PROFILE CARD -->
+    <div class="profile-card">
+        <img id="profilePic" src="default-profile.png" alt="Profile Picture">
+        <div class="profile-details">
+            <h3 id="username">Your Name</h3>
+            <p id="status">Your Status</p>
+            <label>Upload Profile Picture</label>
+            <input type="file" id="uploadPic" accept="image/*" onchange="uploadProfilePic(event)">
+            <label>Username</label>
+            <input type="text" id="editUsername" placeholder="Edit Username">
+            <label>Status</label>
+            <input type="text" id="editStatus" placeholder="Edit Status">
+            <button onclick="saveProfile()">Save Profile</button>
+        </div>
+    </div>
+
+    <!-- PROGRESS CHART -->
+    <div id="progressChartWrap" style="display:flex;justify-content:center;">
+        <canvas id="progressChart" style="width:100%;max-width:600px;height:300px;"></canvas>
+    </div>
+    <div id="progressError" style="color:#b00020;margin-top:6px;text-align:center;display:none;"></div>
+
+    <!-- CERTIFICATES -->
+    <h3>Certificates</h3>
+    <input type="file" id="uploadCert" accept="image/*,.pdf" multiple onchange="uploadCertificates(event)">
+    <div class="certificates-grid" id="certificatesGrid"></div>
+
+    <!-- RECENT ACTIVITY -->
+    <h3>Recent Activity</h3>
+    <div class="activity-grid" id="activityGrid"></div>
+
+    <!-- DATA IMPORT / EXPORT / CLEAR -->
+    <div class="data-controls">
+        <button onclick="exportData()">Export Data</button>
+        <button onclick="importData()">Import Data</button>
+        <button onclick="clearAllData()">Clear All Data</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+
+<script>
+/* ---------------------- DATABASE ---------------------- */
+let db;
+let progressChart = null; // keep reference so we can destroy and re-create cleanly
+function openDB() {
+    return new Promise((resolve,reject)=>{
+        const req=indexedDB.open("MateDB",3);
+            req.onupgradeneeded = e => {
+                db=e.target.result;
+                ["tasks","notes","projects","courses","profile","activity","certificates","chats","searches"].forEach(store=>{
+                    if(!db.objectStoreNames.contains(store)) db.createObjectStore(store,{keyPath:"id",autoIncrement:true});
+                });
+            };
+        req.onsuccess = e => { db=e.target.result; resolve(db); };
+        req.onerror = e => reject(e);
+    });
+}
+function get(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readonly"); const req=tx.objectStore(store).get(key); req.onsuccess=()=>resolve(req.result); req.onerror=()=>resolve(null); });}
+function getAll(store){return new Promise(resolve=>{ const tx=db.transaction(store,"readonly"); const req=tx.objectStore(store).getAll(); req.onsuccess=()=>resolve(req.result); req.onerror=()=>resolve([]); });}
+function add(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).add(obj); req.onsuccess=()=>resolve(); });}
+function put(store,obj){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).put(obj); req.onsuccess=()=>resolve(); });}
+function del(store,key){return new Promise(resolve=>{ const tx=db.transaction(store,"readwrite"); const req=tx.objectStore(store).delete(key); req.onsuccess=()=>resolve(); });}
+
+/* ---------------------- PROFILE FUNCTIONS ---------------------- */
+async function loadProfile() {
+    const profile = await get("profile",1) || {};
+    document.getElementById("username").innerText = profile.username || "Your Name";
+    document.getElementById("status").innerText = profile.status || "Your Status";
+    if(profile.pic) document.getElementById("profilePic").src = profile.pic;
+}
+async function saveProfile() {
+    const profile = {
+        id: 1, // important for consistent key
+        username: document.getElementById("editUsername").value || document.getElementById("username").innerText,
+        status: document.getElementById("editStatus").value || document.getElementById("status").innerText,
+        pic: document.getElementById("profilePic").src
+    };
+    await put("profile", profile);
+    await logActivity(`Updated profile`);
+    loadProfile();
+}
+function uploadProfilePic(e){
+    const reader = new FileReader();
+    reader.onload = ()=>{ document.getElementById("profilePic").src = reader.result; }
+    reader.readAsDataURL(e.target.files[0]);
+}
+
+/* ---------------------- CERTIFICATES ---------------------- */
+async function uploadCertificates(e){
+    const files = Array.from(e.target.files);
+    for(const file of files){
+        const reader = new FileReader();
+        reader.onload = async () => {
+            await add("certificates",{file: reader.result, name: file.name, type:file.type, time:new Date().toLocaleString()});
+            await logActivity(`Added certificate: ${file.name}`);
+            loadCertificates();
+        };
+        reader.readAsDataURL(file);
+    }
+}
+async function loadCertificates(){
+    const grid = document.getElementById("certificatesGrid");
+    grid.innerHTML = "";
+    const certs = await getAll("certificates");
+    certs.forEach(c=>{
+        const div = document.createElement("div");
+        div.className="certificate-card";
+        if(c.type.includes("pdf")){
+            div.innerHTML=`<p>${c.name}</p><a href="${c.file}" target="_blank">View PDF</a>`;
+        } else {
+            div.innerHTML=`<img src="${c.file}" style="max-width:100%;max-height:120px;"><p>${c.name}</p>`;
+        }
+        grid.appendChild(div);
+    });
+}
+
+/* ---------------------- ACTIVITY ---------------------- */
+async function logActivity(action){
+    await add("activity",{action, time:new Date().toLocaleString()});
+}
+async function loadActivity(){
+    const grid = document.getElementById("activityGrid");
+    grid.innerHTML="";
+    const activities = await getAll("activity");
+    if(activities.length === 0){ grid.innerHTML="<p>No recent activity</p>"; return; }
+    activities.slice(-10).reverse().forEach(a=>{
+        const div = document.createElement("div");
+        div.className="activity-card";
+        div.innerText = `[${a.time}] ${a.action}`;
+        grid.appendChild(div);
+    });
+}
+
+/* ---------------------- PROGRESS CHART ---------------------- */
+async function loadProgress(){
+    try {
+        const projects = await getAll("projects");
+        const tasks = await getAll("tasks");
+        const courses = await getAll("courses");
+        const counts = [
+            projects.filter(p=>p.done).length,
+            tasks.filter(t=>t.done).length,
+            courses.filter(c=>c.done).length
+        ];
+        const total = counts.reduce((s,v)=>s+v,0);
+
+        // destroy previous chart if exists
+        if(progressChart) { progressChart.destroy(); progressChart = null; }
+
+        let chartData, chartType = "pie", chartOptions = {
+            responsive:true,
+            plugins:{
+                legend:{ display:true, position:'bottom' },
+                tooltip:{ enabled:true }
+            }
+        };
+
+        if(total === 0){
+            // fallback when no completed items — show a neutral single slice labeled "No data"
+            chartData = {
+                labels: ["No completed items"],
+                datasets: [{ data: [1], backgroundColor: ["#e0e0e0"] }]
+            };
+            chartOptions.plugins.legend.display = false;
+        } else {
+            chartData = {
+                labels: ["Projects Completed","Tasks (Planner) Completed","Courses Completed"],
+                // distinct colors: projects (green), planner/tasks (blue), courses (orange)
+                datasets: [{ data: counts, backgroundColor:["#4CAF50","#2196F3","#FF9800"] }]
+            };
+        }
+
+        // clear any previous error
+        const errEl = document.getElementById('progressError');
+        errEl.style.display = 'none';
+        errEl.innerText = '';
+
+        progressChart = new Chart(document.getElementById("progressChart"), {
+            type: chartType,
+            data: chartData,
+            options: chartOptions
+        });
+    } catch (err) {
+        console.error("loadProgress error:", err);
+        const errEl = document.getElementById('progressError');
+        errEl.innerText = "Unable to render chart: " + (err && err.message ? err.message : "unknown error");
+        errEl.style.display = 'block';
+        if(progressChart){ progressChart.destroy(); progressChart = null; }
+    }
+}
+
+/* ---------------------- STORAGE SYNC ---------------------- */
+/* refresh chart when other pages/tabs broadcast updates via localStorage */
+window.addEventListener('storage', (e)=>{
+    if(!e.key) return;
+    try {
+        if(e.key === 'edumate-update'){
+            // reload counts (chart) and other UI if needed
+            loadProgress().catch(()=>{});
+            loadActivity().catch(()=>{});
+            loadCertificates().catch(()=>{});
+        }
+    } catch(err){ console.error(err); }
+});
+
+/* ---------------------- IMPORT / EXPORT / CLEAR ---------------------- */
+async function exportData(){
+    const stores=["notes","tasks","projects","courses","profile","activity","certificates"];
+    const allData={};
+    for(const s of stores){ allData[s] = await getAll(s); }
+    const blob = new Blob([JSON.stringify(allData,null,2)],{type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="edumate-data.json"; a.click();
+    URL.revokeObjectURL(url);
+}
+async function importData(){
+    const input=document.createElement("input");
+    input.type="file"; input.accept="application/json";
+    input.onchange=async e=>{
+        const file=e.target.files[0];
+        const text=await file.text();
+        const json=JSON.parse(text);
+        for(const store in json){
+            const tx=db.transaction(store,"readwrite");
+            const storeObj=tx.objectStore(store);
+            await storeObj.clear();
+            for(const item of json[store]) await storeObj.add(item);
+        }
+        loadAll();
+    };
+    input.click();
+}
+async function clearAllData(){
+    if(!confirm("Are you sure to clear all data?")) return;
+    for(const store of ["notes","tasks","projects","courses","profile","activity","certificates"]){
+        const tx=db.transaction(store,"readwrite");
+        tx.objectStore(store).clear();
+    }
+    loadAll();
+}
+
+/* ---------------------- LOAD ALL ---------------------- */
+async function loadAll(){
+    await loadProfile();
+    await loadCertificates();
+    await loadActivity();
+    await loadProgress();
+}
+
+/* ---------------------- INIT ---------------------- */
+openDB().then(loadAll);
+</script>
+
+</body>
+</html>
