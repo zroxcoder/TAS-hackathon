@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>AI Chat | Edumate</title>
+<title>Chat Bot | Edumate</title>
 
 <link rel="icon" href="../assets/E.ico" type="image/x-icon">
 
@@ -63,6 +63,9 @@
 #chatInput { flex-grow:1; padding:8px 10px; border-radius:8px; border:1px solid #ccc; }
 #sendBtn { padding:8px 16px; border:none; border-radius:8px; background:var(--primary-orange); color:#000; cursor:pointer; }
 
+#helpPanel { display:none; margin-top:12px; padding:12px; background:#fff; border-radius:8px; border:1px solid #e6e6e6; max-width:720px; font-size:14px; }
+#helpPanel ul { margin:6px 0 0 18px; }
+
 
 @keyframes fadeIn { from {opacity:0; transform: translateY(10px);} to {opacity:1; transform: translateY(0);} }
 .message { animation: fadeIn 0.3s ease-in-out; }
@@ -77,12 +80,12 @@
     <a class="nav-link" href="planner.html">📅 Planner</a>
     <a class="nav-link" href="projects.html">📁 Projects</a>
     <a class="nav-link" href="courses.html">🎓 Courses</a>
-    <a class="nav-link active" href="aichatbot.html">🤖 AI Chat</a>
+    <a class="nav-link active" href="aichatbot.html">🤖 Chat Bot</a>
     <a class="nav-link" href="profile.html">⚙️ Profile</a>
 </div>
 
 <div class="content">
-    <h2 class="section-title">AI Chat Bot</h2>
+    <h2 class="section-title">Chat Bot</h2>
 
     <div id="chatBox" aria-live="polite"></div>
 
@@ -90,6 +93,7 @@
         <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off" />
         <button id="sendBtn" disabled>Send</button>
         <button id="historyBtn" title="Search history" style="border-radius:8px;padding:8px 10px;border:1px solid #ccc;background:#fff;cursor:pointer;margin-left:6px;">History</button>
+        <button id="helpBtn" title="Show help" style="border-radius:8px;padding:8px 10px;border:1px solid #ccc;background:#fff;cursor:pointer;margin-left:6px;">Help</button>
     </div>
     <div id="searchHistory" style="display:none;margin-top:12px;max-height:200px;overflow:auto;padding:10px;background:#fff;border-radius:8px;border:1px solid #e6e6e6;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -99,6 +103,27 @@
             </div>
         </div>
         <div id="searchHistoryList">Loading...</div>
+    </div>
+    <div id="helpPanel" aria-hidden="true">
+        <div id="helpIntro" style="margin-bottom:8px;">
+            <strong>Chat Bot — Quick Guide</strong>
+            <div style="margin-top:6px;font-size:14px;line-height:1.4;">
+                <div><strong>What it does:</strong> Helps you find pending work, list tasks/projects/courses, search research papers, and get past-paper links for supported subjects.</div>
+                <div style="margin-top:6px;"><strong>How to use:</strong> Type a natural request. For example, ask about your tasks, ask for priorities, or request past papers using a subject name or code and a year (2015–2025).</div>
+            </div>
+        </div>
+        <strong>Supported past-paper subjects:</strong>
+        <ul id="helpSubjectList"></ul>
+        <div style="margin-top:8px;">
+            <strong>Example queries:</strong>
+            <ul style="margin:6px 0 0 18px;">
+                <li><code>what should I do first?</code> — Suggest highest priority items from tasks and projects.</li>
+                <li><code>show my tasks</code> — List your pending tasks.</li>
+                <li><code>show my projects</code> — List your projects.</li>
+                <li><code>past paper accounting 9706 2020</code> — Get a Google site-search link to that year's past papers.</li>
+                <li><code>research climate change</code> — Search Google Scholar for research on a topic.</li>
+            </ul>
+        </div>
     </div>
 </div>
 
@@ -269,6 +294,22 @@ function linkifyRaw(raw){
     return out;
 }
 
+const SUBJECT_MAP = {
+    "accounting": "9706",
+    "biology": "9700",
+    "business": "9609",
+    "chemistry": "9701",
+    "computer science": "9618",
+    "economics": "9708",
+    "english general paper": "8021",
+    "mathematics": "9709",
+    "mathematics-further": "9231",
+    "mathematics further": "9231",
+    "physics": "9702",
+    "psychology": "9990",
+    "sociology": "9699"
+};
+
 async function logSearch(query){
     try{
         const item = {query: query, time: new Date().toISOString()};
@@ -405,6 +446,67 @@ async function getAIResponse(userText){
     
     const text = (userText || "").toLowerCase();
 
+    
+
+    
+    if(/past paper|past papers|pastpaper|pastpapers/.test(text)){
+    
+        const yearMatch = text.match(/\b(20(?:1[5-9]|2[0-5]))\b/);
+        const year = yearMatch ? yearMatch[0] : null;
+
+      
+        const nums = (text.match(/\b(\d{4})\b/g) || []).slice();
+
+      
+        let code = null;
+        if(nums.length){
+            for(const n of nums){
+                if(n === year) continue;
+                code = n; break;
+            }
+        }
+
+      
+        let foundSubject = null;
+        for(const key of Object.keys(SUBJECT_MAP)){
+            if(text.includes(key)) { foundSubject = key; break; }
+        }
+
+      
+        if(foundSubject && !code){ code = SUBJECT_MAP[foundSubject]; }
+
+      
+        if(code && !foundSubject){
+            const inv = Object.entries(SUBJECT_MAP).find(([k,v])=>v===code);
+            if(inv) foundSubject = inv[0];
+        }
+
+      
+        if(!year){
+            return 'Please include the year (2015–2025) with your request, e.g. "past paper accounting 9706 2020".';
+        }
+        if(!code || !/^[0-9]{4}$/.test(code)){
+            return 'Subject or subject code not recognized. Please provide a supported subject name or a valid subject code.';
+        }
+
+      
+        const y = parseInt(year,10);
+        if(isNaN(y) || y < 2015 || y > 2025){
+            return 'Year not available. Please request a year between 2015 and 2025.';
+        }
+
+      
+        if(foundSubject && SUBJECT_MAP[foundSubject] && SUBJECT_MAP[foundSubject] !== code){
+            return `The provided code (${code}) does not match the subject '${foundSubject}'. Please check the subject name and code.`;
+        }
+
+      
+        const query = encodeURIComponent(code + ' ' + year);
+        const googleLink = `https://www.google.com/search?q=site:pastpapers.papacambridge.com+${query}`;
+        try{ await logSearch(`pastpaper:${foundSubject||code} ${year}`); }catch(e){}
+        return `Here are past papers for ${foundSubject? (foundSubject + ' ('+code+')') : ('code '+code)} for ${year}:\n- ${googleLink}`;
+    }
+
 
     if(/\b(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(text)){
         return "Hello — how can I help you? You can ask me things like:\n- \"What should I do first?\"\n- \"Show my tasks\"\n- \"How to add notes?\"\n- \"Show FAQ\"";
@@ -540,6 +642,28 @@ document.getElementById('clearSearchHistoryBtn').addEventListener('click', async
     }catch(e){}
     try{ localStorage.setItem('edumate_searches','[]'); }catch(e){}
     await loadSearchHistory();
+});
+
+    
+document.getElementById('helpBtn').addEventListener('click', ()=>{
+    const panel = document.getElementById('helpPanel');
+    const list = document.getElementById('helpSubjectList');
+    if(panel.style.display === 'block') { panel.style.display = 'none'; panel.setAttribute('aria-hidden','true'); return; }
+    // populate help intro and subject list (no year quick-links)
+    list.innerHTML = '';
+    const noteIntro = document.getElementById('helpIntro');
+    if(noteIntro) noteIntro.innerHTML = `<strong>Usage:</strong> Ask naturally. For past papers include a year (2015–2025). Code is optional for supported subjects.`;
+
+    
+    Object.keys(SUBJECT_MAP).forEach(k => {
+        const label = k.replace(/-/g, ' ');
+        const code = SUBJECT_MAP[k];
+        const li = document.createElement('li');
+        li.innerText = `${label} — ${code}`;
+        list.appendChild(li);
+    });
+
+    panel.style.display = 'block'; panel.setAttribute('aria-hidden','false');
 });
 
 openDB()

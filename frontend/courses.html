@@ -44,8 +44,9 @@
 
 
 .modal { position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.45); display:none; justify-content:center; align-items:center; }
-.modal-content { background:var(--soft-orange); padding:25px; width:420px; border-radius:12px; box-shadow:0 4px 10px black; }
-.modal-content input, .modal-content textarea, .modal-content select { width:100%; padding:10px; margin:8px 0; border-radius:8px; border:1px solid #aaa;}
+.modal-content { background:var(--soft-orange); padding:25px; width:480px; max-width:92vw; box-sizing:border-box; border-radius:12px; box-shadow:0 4px 10px black; }
+.modal-content input, .modal-content textarea, .modal-content select { width:100%; padding:10px; margin:8px 0; border-radius:8px; border:1px solid #aaa; box-sizing:border-box; font-size:14px; }
+.modal-content textarea { min-height:120px; resize:vertical; }
 .modal-content button { background:var(--primary-orange); padding:10px 20px; border:none; margin-right:8px; border-radius:8px; cursor:pointer; }
 
 @keyframes fadeIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
@@ -60,7 +61,7 @@
 <a class="nav-link" href="planner.html">📅 Planner</a>
 <a class="nav-link" href="projects.html">📁 Projects</a>
 <a class="nav-link active" href="courses.html">🎓 Courses</a>
-<a class="nav-link" href="aichatbot.html">🤖 AI Chat</a>
+<a class="nav-link" href="aichatbot.html">🤖 Chat Bot</a>
 <a class="nav-link" href="profile.html">⚙️ Profile</a>
 </div>
 
